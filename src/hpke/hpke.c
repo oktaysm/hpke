@@ -36,8 +36,8 @@ static inline uint32_t Arrays_Export(Arrays_t *as, uint8_t *out,
     return res;
 }
 
-DLL_PUBLIC uint32_t ArrayRef_Concat(uint8_t *out, uint32_t limit,
-                                    uint32_t arg_count, ...) {
+uint32_t ArrayRef_Concat(uint8_t *out, uint32_t limit, uint32_t arg_count,
+                         ...) {
     va_list ap;
     Arrays_t as;
     assert(arg_count <= 0x10);
@@ -418,22 +418,29 @@ int32_t HPKE_KeySchedule(hpke_t suite, hpke_array_ref_t shared_secret,
     hpke_array_ref_t ksc_Ref = {ksc, SIZEA(ksc)};
     hpke_array_ref_t secret_Ref = {secret, SIZEA(secret)};
 
-    HPKE_LExtract(suite.kdf_id, salt_Ref, suite_text_Ref, label_psk_id_hash_Ref,
-                  psk_id, psk_id_hash);
-    HPKE_LExtract(suite.kdf_id, salt_Ref, suite_text_Ref, label_info_hash_Ref,
-                  info, info_hash);
-    HPKE_LExtract(suite.kdf_id, shared_secret, suite_text_Ref, label_secret_Ref,
-                  psk, secret);
+    if (HPKE_LExtract(suite.kdf_id, salt_Ref, suite_text_Ref,
+                      label_psk_id_hash_Ref, psk_id, psk_id_hash))
+        goto err;
+    if (HPKE_LExtract(suite.kdf_id, salt_Ref, suite_text_Ref,
+                      label_info_hash_Ref, info, info_hash))
+        goto err;
+    if (HPKE_LExtract(suite.kdf_id, shared_secret, suite_text_Ref,
+                      label_secret_Ref, psk, secret))
+        goto err;
     ArrayRef_Concat(ksc, SIZEA(ksc), 3, &mode_Ref, &psk_id_hash_Ref,
                     &info_hash_Ref);
 
     memset(ctx->key, 0, sizeof(ctx->key));
-    HPKE_LExpand(suite.kdf_id, secret_Ref, suite_text_Ref, label_key_Ref,
-                 ksc_Ref, aeads[suite.aead_id].Nk, ctx->key);
-    HPKE_LExpand(suite.kdf_id, secret_Ref, suite_text_Ref, label_base_nonce_Ref,
-                 ksc_Ref, aeads[suite.aead_id].Nn, ctx->base_nonce);
-    HPKE_LExpand(suite.kdf_id, secret_Ref, suite_text_Ref, label_exp_Ref,
-                 ksc_Ref, kdf[suite.kdf_id].Nh, ctx->exporter_secret);
+    if (HPKE_LExpand(suite.kdf_id, secret_Ref, suite_text_Ref, label_key_Ref,
+                     ksc_Ref, aeads[suite.aead_id].Nk, ctx->key))
+        goto err;
+    if (HPKE_LExpand(suite.kdf_id, secret_Ref, suite_text_Ref,
+                     label_base_nonce_Ref, ksc_Ref, aeads[suite.aead_id].Nn,
+                     ctx->base_nonce))
+        goto err;
+    if (HPKE_LExpand(suite.kdf_id, secret_Ref, suite_text_Ref, label_exp_Ref,
+                     ksc_Ref, kdf[suite.kdf_id].Nh, ctx->exporter_secret))
+        goto err;
     ctx->seq = 0;
     ctx->suite.kem_id = suite.kem_id;
     ctx->suite.kdf_id = suite.kdf_id;
@@ -445,6 +452,12 @@ int32_t HPKE_KeySchedule(hpke_t suite, hpke_array_ref_t shared_secret,
     explicit_bzero(&secret, sizeof(secret));
     explicit_bzero(&ksc, sizeof(ksc));
     return 0;
+err:
+    explicit_bzero(&psk_id_hash, sizeof(psk_id_hash));
+    explicit_bzero(&info_hash, sizeof(info_hash));
+    explicit_bzero(&secret, sizeof(secret));
+    explicit_bzero(&ksc, sizeof(ksc));
+    return -1;
 }
 
 DLL_PUBLIC int32_t HPKE_SetupS(hpke_t suite, const uint8_t *pkR,
