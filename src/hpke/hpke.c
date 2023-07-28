@@ -575,3 +575,23 @@ DLL_PUBLIC int32_t HPKE_Open(hpke_ctx_t *ctx, hpke_array_ref_t aad,
     explicit_bzero(&cnonce, sizeof(cnonce));
     return 0;
 }
+
+DLL_PUBLIC int32_t HPKE_Keysize(uint16_t kem_id, uint32_t *sk_size,
+                                uint32_t *pk_size, uint32_t *ssecret_size) {
+    if (pk_size)
+        *pk_size = kems[kem_id].Npk;
+    if (sk_size)
+        *sk_size = kems[kem_id].Nsk;
+    if (ssecret_size)
+        *ssecret_size = kems[kem_id].Nsecret;
+    return 0;
+}
+
+DLL_PUBLIC int32_t HPKE_Keygen(uint16_t kem_id, uint8_t *sk, uint8_t *pk) {
+    return kems[kem_id].UKeygen(kem_id, sk, pk);
+}
+
+DLL_PUBLIC int32_t HPKE_Derive(uint16_t kem_id, const uint8_t *sk,
+                               uint8_t *pk) {
+    return kems[kem_id].UDerive(kem_id, sk, pk);
+}

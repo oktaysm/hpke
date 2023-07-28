@@ -193,15 +193,17 @@ int test_hpke_encap(void* data) {
 }
 
 int test_hpke_auth_encap(void* data) {
-    uint8_t skR[48], pkR[97];
-    uint8_t skS[48], pkS[97];
-    kem_nist_keygen(HPKE_KEM_DHKEM_P384, skR, pkR);
-    kem_nist_keygen(HPKE_KEM_DHKEM_P384, skS, pkS);
+    uint32_t skSize, pkSize, ssSize;
+    HPKE_Keysize(HPKE_KEM_DHKEM_P384, &skSize, &pkSize, &ssSize);
 
-    uint8_t ssSender[48];
-    uint8_t ssRec[48];
-    uint8_t enc[97];
+    uint8_t skR[skSize], pkR[pkSize];
+    uint8_t skS[skSize], pkS[pkSize];
+    HPKE_Keygen(HPKE_KEM_DHKEM_P384, skR, pkR);
+    HPKE_Keygen(HPKE_KEM_DHKEM_P384, skS, pkS);
 
+    uint8_t ssSender[ssSize];
+    uint8_t ssRec[ssSize];
+    uint8_t enc[pkSize];
     HPKE_AuthEncap(HPKE_KEM_DHKEM_P384, pkR, skS, ssSender, enc);
     HPKE_AuthDecap(HPKE_KEM_DHKEM_P384, skR, pkS, enc, ssRec);
 
