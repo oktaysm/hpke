@@ -135,7 +135,10 @@ int32_t kem_nist_derive(uint16_t kem, const uint8_t* sk, uint8_t* pk) {
     }
     BIGNUM* bnLocal = NULL;
     EC_POINT* point = NULL;
-    const EC_GROUP* group = EC_GROUP_new_by_curve_name(EC_curve_nist2nid(name));
+    EC_GROUP* group = NULL;
+    group = EC_GROUP_new_by_curve_name(EC_curve_nist2nid(name));
+    if (group == NULL)
+        goto err;
     bnLocal = BN_bin2bn(sk, kems[kem].Nsk, NULL);
     if (bnLocal == NULL)
         goto err;
@@ -147,10 +150,12 @@ int32_t kem_nist_derive(uint16_t kem, const uint8_t* sk, uint8_t* pk) {
     if (EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED, pk,
                            kems[kem].Npk, NULL) == 0)
         goto err;
+    EC_GROUP_free(group);
     EC_POINT_free(point);
     BN_free(bnLocal);
     return 0;
 err:
+    EC_GROUP_free(group);
     EC_POINT_free(point);
     BN_free(bnLocal);
     return -1;
